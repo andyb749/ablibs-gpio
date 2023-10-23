@@ -1,0 +1,27 @@
+{
+    "name": "ablibs-gpio",
+    "version": "0.0.5-alpha",
+    "description": "IO Expanders for Arduino",
+    "keywords": "I2C, SPI, MCP23008, MCP23S08, PCF8574, PCF8575, MCP3204, MCP3208, ADS1115",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/andyb749/ablibs-gpio.git"
+    },
+    "export": {
+        "include": [
+            "src/*.c",
+            "src/*.cpp",
+            "src/*.h"
+        ]
+    },
+    "authors": [
+        {
+            "name": "AndyB",
+            "email": "andyb749@hotmail.com",
+            "maintainer": true
+        }
+    ],
+    "license": "MIT",
+    "frameworks": "arduino",
+    "platforms": "*"
+}
