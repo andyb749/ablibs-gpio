@@ -1,6 +1,6 @@
 //***************************************************************************
 //
-//  File Name :		mcp23x08.h
+//  File Name :		Mcp23x08.h
 //
 //  Project :		Arduino style libraries
 //
@@ -45,6 +45,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
+#include "Gpio.h"
 
 // registers
 #define MCP23008_IODIR 0x00
@@ -61,19 +62,30 @@
 
 #define MCP23008_ADDR 0x40
 
-//static const int spiClk = 1000000; // 1 MHz
-static const int spiClk = 250000; // 250 kHz
+//static const uint32_t spiClk = 1000000; // 1 MHz
+static const uint32_t spiClk = 250000; // 250 kHz
 
-class Mcp23x08
+/// @brief Base class for the MCP23008 & MCP23S08 8-bit
+/// IO expanders.
+class Mcp23x08 : public GpioExpander8_t
 {
+    // fields
+    protected:
+        const uint8_t _wrAddr;
+        const uint8_t _rdAddr;
+
+    // methods
     public:
+        Mcp23x08 (uint8_t addr) : _wrAddr(MCP23008_ADDR + (addr<<1)), _rdAddr(MCP23008_ADDR + (addr<<1) + 1)
+        {
+        }
 
         //! \brief Writes the supplied value to the GPIO pins
         //! \details Writes to the GPIO register to set the pins
         //! to the supplied value
         //! \param val The value to write to the output pins
         inline
-        void write(uint8_t val)
+        void write8(uint8_t val, uint8_t p = 0)
         {
             writeRegister(MCP23008_GPIO, val);
         }
@@ -82,7 +94,7 @@ class Mcp23x08
         //! \details Reads the GPIO register to get the value on the input pins
         //! \returns The value of the GPIO register
         inline
-        uint8_t read()
+        uint8_t read8(uint8_t p = 0)
         {
             return readRegister(MCP23008_GPIO);
         }
@@ -93,7 +105,7 @@ class Mcp23x08
         //! an input
         //! \param dir The bits pattern to set direction
         inline
-        void setDirection(uint8_t dir)
+        void setDirection(uint8_t dir, uint8_t p = 0)
         {
             writeRegister(MCP23008_IODIR, dir);
         }
@@ -104,7 +116,7 @@ class Mcp23x08
         //! pin inversion
         //! \param pol The bit pattern to set inversion	
         inline
-        void setPolarity(uint8_t pol)
+        void setPolarity(uint8_t pol, uint8_t p = 0)
         {
             writeRegister(MCP23008_IPOL, pol);
         }
@@ -114,7 +126,7 @@ class Mcp23x08
         //! pullup of 100K.  Set a bit to 1 to enable the pullup	
         //! \param pullup The bit pattern to set pullups
         inline
-        void setPullups (uint8_t pullup)
+        void setPullups (uint8_t pullup,  uint8_t p = 0)
         {
             writeRegister(MCP23008_GPPU, pullup);
         }
@@ -125,51 +137,36 @@ private:
 };
 
 
+/// @brief Class to interface with a MCP23S08, 8-bit
+/// SPI IO expander.
 class Mcp23S08 : public Mcp23x08
 {
-    // variables
+    // fields
     public:
     protected:
     private:
-        SPIClass & _spi = SPI;
-        uint8_t _ss;
-        uint8_t wrAddr;
-        uint8_t rdAddr;
+        SPIClass& _spi;
+        const uint8_t _ss;
 
     // methods
     public:
-        //! \brief Initialises a new instance of the MCP23S08 object with the supplied hardware address.
-        //! \param spi A reference to the SPI interface to be used.
-	    //! \param addr An address that specifies the state of the two address pins A1..A0.
-        Mcp23S08(SPIClass &spi, uint8_t ss, uint8_t addr = 0) : wrAddr(MCP23008_ADDR + (addr<<1)), rdAddr(MCP23008_ADDR + (addr<<1) + 1)
+        /// @brief Initialises a new instance of the MCP23S08 object with the supplied hardware address.
+        /// @param spi A reference to the SPI interface to be used.
+	    /// @param addr An address that specifies the state of the two address pins A1..A0.
+        /// @param spi The SPI bus to use.
+        Mcp23S08(uint8_t ss, uint8_t addr = 0, SPIClass &spi = SPI) : _ss(ss), _spi(spi), Mcp23x08(addr)
         {
-            _spi = spi;
-            _ss = ss;
             pinMode(_ss, OUTPUT);
             digitalWrite(_ss, HIGH);
         }
 
-        //! \brief Initialises a new instance of the MCP23S08 object with the supplied hardware address
-	    //! \param addr An address that specifies the state of the two address pins A1..A0
-	    Mcp23S08(uint8_t ss = SS, uint8_t addr = 0) : wrAddr(MCP23008_ADDR + (addr<<1)), rdAddr(MCP23008_ADDR + (addr<<1) + 1)
-	    {
-            _spi = SPI;
-            _ss = ss;
-            pinMode(_ss, OUTPUT);
-            digitalWrite(_ss, HIGH);
-	    }
 
-	    ~Mcp23S08() { }
-
-        Mcp23S08( const Mcp23S08 &c );
-        Mcp23S08& operator=( const Mcp23S08 &c );
-
-
+    private:
         void writeRegister (uint8_t reg, uint8_t val)
         {
           	_spi.beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE0));
             digitalWrite(_ss, LOW);
-            _spi.transfer(wrAddr);
+            _spi.transfer(_wrAddr);
             _spi.transfer(reg);
              _spi.transfer(val);
             digitalWrite(_ss, HIGH);
@@ -180,7 +177,7 @@ class Mcp23S08 : public Mcp23x08
         {
           	_spi.beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE0));
             digitalWrite(_ss, LOW);
-            _spi.transfer(rdAddr);
+            _spi.transfer(_rdAddr);
             _spi.transfer(reg);
             uint8_t ret = _spi.transfer(0);
             digitalWrite(_ss, HIGH);
@@ -188,45 +185,30 @@ class Mcp23S08 : public Mcp23x08
             return ret;
         }
 
+        Mcp23S08( const Mcp23S08 &c );
+        Mcp23S08& operator=( const Mcp23S08 &c );
 };
+
 
 class Mcp23008 : public Mcp23x08
 {
-    // variables
-    public:
-    protected:
+    // fields
     private:
-        TwoWire & _wire = Wire;
-
-    uint8_t wrAddr;
-    uint8_t rdAddr;
+        TwoWire& _wire;
 
     // methods
     public:
-        //! \brief Initialises a new instance of the MCP23S08 object with the supplied hardware address.
-        //! \param wire A reference to the I2C interface to be used.
-	    //! \param addr An address that specifies the state of the two address pins A1..A0.
-        Mcp23008(TwoWire &wire, uint8_t addr = 0) : wrAddr(MCP23008_ADDR + (addr<<1)), rdAddr(MCP23008_ADDR + (addr<<1) + 1)
+        /// @brief Initialises a new instance of the MCP23S08 object with the supplied hardware address.
+        /// @param wire A reference to the I2C interface to be used.
+	    /// @param addr An address that specifies the state of the two address pins A1..A0.
+        Mcp23008(uint8_t addr = 0, TwoWire &wire = Wire) : _wire(wire), Mcp23x08(addr)
         {
-            _wire = wire;
         }
 
-        //! \brief Initialises a new instance of the MCP23S08 object with the supplied hardware address
-	    //! \param addr An address that specifies the state of the two address pins A1..A0
-	    Mcp23008(TwoWire wire = Wire, uint8_t addr = 0) : wrAddr(MCP23008_ADDR + (addr<<1)), rdAddr(MCP23008_ADDR + (addr<<1) + 1)
-	    {
-            _wire = Wire;
-	    }
-
-	    ~Mcp23008() { }
-
-        Mcp23008( const Mcp23008 &c );
-        Mcp23008& operator=( const Mcp23008 &c );
-
-
+    private:
         void writeRegister (uint8_t reg, uint8_t val)
         {
-		    _wire.beginTransmission(wrAddr);
+		    _wire.beginTransmission(_wrAddr);
 		    _wire.write(reg);
 		    _wire.write(val);
 		    _wire.endTransmission();
@@ -234,13 +216,15 @@ class Mcp23008 : public Mcp23x08
         
         uint8_t readRegister (uint8_t reg)
         {
-		    _wire.beginTransmission(rdAddr);
+		    _wire.beginTransmission(_rdAddr);
 		    _wire.write(reg);
 		    uint8_t ret = _wire.read();
 		    _wire.endTransmission();
             return ret;
         }
 
+        Mcp23008( const Mcp23008 &c );
+        Mcp23008& operator=( const Mcp23008 &c );
 };
 
-#endif
+#endif  // __MCP23x08_H__

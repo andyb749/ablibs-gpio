@@ -40,68 +40,20 @@
 
 #include <Wire.h>
 #include <stdint.h>
-
-/// @brief Implmentation of an object to interface with a PCF8574 8 bit digital
-/// port expander.  Note: the PCF8574A has a different base address.
-class Pcf8574
-{
-	// variables
-	public:
-	protected:
-	private:
-		static const uint8_t _base = 0x20;
-		static const uint8_t _altBase = 0x38;	// check...
-		uint8_t _addr;
-		TwoWire& _wire;
-
-	// functions
-	public:
-		/// @brief Initialises a new instance of the Pcf8574 object for the specified I2C address and interface.
-		/// @param addr The I2C address.
-		/// @param wire The I2C interface.
-		Pcf8574 (uint8_t addr=0x00, TwoWire& wire = Wire) : _addr(_base+addr), _wire(wire)
-		{
-		}
-
-
-		/// @brief Writes the 8 bit value to the port.
-		/// @param val The value to write.
-		void write(uint8_t val)
-		{
-		    _wire.beginTransmission(_addr);
-		    _wire.write(val);
-		    _wire.endTransmission();
-		}
-
-		/// @brief Reads the 8 bit value from the port.
-		/// @return The value read from the port.
-		uint8_t read()
-		{
-		    _wire.beginTransmission(_addr);
-		    _wire.endTransmission(false);
-            _wire.requestFrom(_addr, (size_t)1, true);
-            return _wire.read();
-		}
-
-	protected:
-	private:
-		Pcf8574( const Pcf8574 &c );
-		Pcf8574& operator=( const Pcf8574 &c );
-};
-
-
+#include "Gpio.h"
 
 /// @brief Definition of an object to represent a PCF8575 16 bit digital
 /// IO expander.
-class Pcf8575
+/// @remark We treat this device as two independent 8-bit ports.
+class Pcf8575 : public GpioExpander8_t
 {
-	// variables
-	public:
-	protected:
+	// fields
 	private:
 		static const uint8_t _base = 0x20;
-		uint8_t _addr;
+		const uint8_t _addr;
 		TwoWire& _wire;
+		uint8_t _p0;
+		uint8_t _p1;
 
 	// methods
 	public:
@@ -112,19 +64,29 @@ class Pcf8575
 		{
 		}
 
-		/// @brief Writes the 16 bit value to the port.
-		/// @param val The value to write.
-		void write(uint16_t val)
+		inline
+		void write16(uint16_t val)
 		{
-		    _wire.beginTransmission(_addr);
-		    _wire.write(val & 0xff);
-		    _wire.write(val >> 8);
-		    _wire.endTransmission();
+			write (_p0 = val & 0xff, val >> 8);
 		}
 
-		/// @brief Reads the 16 bit value from the port.
-		/// @return The value read from the port.
-		uint16_t read()
+		/// @brief Writes the 8-bit value to the port.
+		/// @param val The value to write.
+		/// @param p The port to write to.
+		void write8(uint8_t val, uint8_t port=0)
+		{
+			switch (port)
+			{
+				case 0:
+					write(val, _p1);
+					break;
+				case 1:
+					write(_p0, val);
+					break;
+			}
+		}
+
+		uint16_t read16()
 		{
 		    _wire.beginTransmission(_addr);
 		    _wire.endTransmission(false);
@@ -133,8 +95,47 @@ class Pcf8575
             return ret + _wire.read();
 		}
 
+		/// @brief Reads the 8-bit value from the specified port.
+		/// @param p The port to read from.
+		/// @return The value read from the port.
+		uint8_t read8(uint8_t p = 0)
+		{
+			uint16_t read = read16();
+			switch (p)
+			{
+				case 0: return read & 0xff;
+				case 1: return read >> 8;
+			}
+			return 0xff;
+		}
+
+		
+		void setDirection(uint8_t dir, uint8_t p = 0)
+		{
+			// TODO:
+		}
+
+		void setPolarity(uint8_t pol, uint8_t p = 0)
+		{
+			// TODO:
+		}
+
+		void setPullups(uint8_t pullup, uint8_t p = 0)
+		{
+			// TODO:
+		}
 	protected:
 	private:
+		void write(uint8_t p0, uint8_t p1)
+		{
+			_p0 = p0;
+			_p1 = p1;
+		    _wire.beginTransmission(_addr);
+		    _wire.write(_p0);
+		    _wire.write(_p1);
+		    _wire.endTransmission();
+		}
+
 		Pcf8575( const Pcf8575 &c );
 		Pcf8575& operator=( const Pcf8575 &c );
 };
