@@ -69,4 +69,4 @@ Currently writes are not working in 16 bit mode.
 
 TODO:
 
-## SN74HCT165
+## SN74HCT16

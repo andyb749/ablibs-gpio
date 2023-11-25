@@ -45,7 +45,10 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
+#include "Commons.h"
 #include "Gpio.h"
+
+//#define DEBUG
 
 // registers
 #define MCP23008_IODIR 0x00
@@ -60,11 +63,11 @@
 #define MCP23008_GPIO 0x09
 #define MCP23008_OLAT 0x0A
 
-//#define MCP23008_ADDR 0x40
+#define MCP23008_SPI_ADDR 0x40
 #define MCP23008_ADDR 0x20
 
-//static const uint32_t spiClk = 1000000; // 1 MHz
-static const uint32_t spiClk = 250000; // 250 kHz
+static const uint32_t spiClk = 1000000; // 1 MHz
+//static const uint32_t spiClk = 250000; // 250 kHz
 
 /// @brief Base class for the MCP23008 & MCP23S08 8-bit
 /// IO expanders.
@@ -155,7 +158,7 @@ class Mcp23S08 : public Mcp23x08
         /// @param spi A reference to the SPI interface to be used.
 	    /// @param addr An address that specifies the state of the two address pins A1..A0.
         /// @param spi The SPI bus to use.
-        Mcp23S08(uint8_t ss, uint8_t addr = 0, SPIClass &spi = SPI) : _ss(ss), _spi(spi), _wrAddr(MCP23008_ADDR + (addr<<1)), _rdAddr(MCP23008_ADDR + (addr<<1) + 1)
+        Mcp23S08(uint8_t ss, uint8_t addr = 0, SPIClass &spi = SPI) : _ss(ss), _spi(spi), _wrAddr(MCP23008_SPI_ADDR + (addr<<1)), _rdAddr(MCP23008_SPI_ADDR + (addr<<1) + 1)
         {
             pinMode(_ss, OUTPUT);
             digitalWrite(_ss, HIGH);
@@ -165,17 +168,23 @@ class Mcp23S08 : public Mcp23x08
     private:
         void writeRegister (uint8_t reg, uint8_t val)
         {
+            #ifdef DEBUG
+            strprintf(Serial, "writeRegister(%02X: %d, %02X)\n", _wrAddr, reg, val);
+            #endif
           	_spi.beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE0));
             digitalWrite(_ss, LOW);
             _spi.transfer(_wrAddr);
             _spi.transfer(reg);
-             _spi.transfer(val);
+            _spi.transfer(val);
             digitalWrite(_ss, HIGH);
   	        _spi.endTransaction();
         }
         
         uint8_t readRegister (uint8_t reg)
         {
+            #ifdef DEBUG
+            strprintf(Serial, "readRegister(%02X: %d)\n", _rdAddr, reg);
+            #endif
           	_spi.beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE0));
             digitalWrite(_ss, LOW);
             _spi.transfer(_rdAddr);
