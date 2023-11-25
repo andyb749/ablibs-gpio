@@ -169,12 +169,12 @@ class Port8_t
         /// @brief Sets the direction of the port.
         /// @param dir A bit mask that specifies each pin's direction.
         /// @remark Set the corresponding bit to 1 for input; 0 for output.
-        virtual void setDirection(uint8_t dir) = 0;
+        //virtual void setDirection(uint8_t dir) = 0;
 
         /// @brief Sets any pullups for the port.
         /// @param pullups A bit mask that specifies each pin's direction.
         /// @remark Set the corresponding bit to 1 to enable the pullup.
-        virtual void setPullups(uint8_t pullups) = 0;
+        //virtual void setPullups(uint8_t pullups) = 0;
 
         /// @brief Write the supplied value to the port.
         /// @param value The value to write to the port.
@@ -182,7 +182,7 @@ class Port8_t
 
         /// @brief Reads the value of the port.
         /// @return The value read from the port.
-        virtual uint8_t read() = 0;
+        //virtual uint8_t read() = 0;
 };
 #endif
 
@@ -221,4 +221,10 @@ class GpioExpander8_t
         virtual void setPullups(uint8_t pullup, uint8_t p = 0) = 0;
 };
 
+class GpioExpander16_t : public GpioExpander8_t
+{
+    public:
+        virtual void write16(uint16_t val) = 0;
+        virtual uint16_t read16() = 0;
+};
 #endif

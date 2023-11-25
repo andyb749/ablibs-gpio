@@ -101,7 +101,7 @@
 //static const uint32_t spiClk = 1000000; // 1 MHz
 static const uint32_t spiClk = 250000; // 250 kHz
 
-class Mcp23x17 : public GpioExpander8_t
+class Mcp23x17 : public GpioExpander16_t
 {
     // fields
     protected:
@@ -112,6 +112,12 @@ class Mcp23x17 : public GpioExpander8_t
     public:
         Mcp23x17 (uint8_t addr) : _wrAddr(MCP23017_ADDR + (addr<<1)), _rdAddr(MCP23017_ADDR + (addr<<1) + 1)
         {
+        }
+
+        void write16(uint16_t val)
+        {
+            write8(val && 0xff, 0);
+            write8(val >> 8, 1);
         }
 
         void write8(uint8_t val, uint8_t p = 0)
@@ -127,6 +133,13 @@ class Mcp23x17 : public GpioExpander8_t
             }
         }
 
+        uint16_t read16()
+        {
+            uint16_t ret = read8(1) << 8;
+            ret += read8(0);
+            return ret;
+        }
+
         uint8_t read8(uint8_t p = 0)
         {
             switch (p)
@@ -136,6 +149,7 @@ class Mcp23x17 : public GpioExpander8_t
                 case 1:
                     return readRegister(MCP23017_GPIOB);
             }
+            return 0x00;
         }
 
         void setDirection(uint8_t dir, uint8_t p = 0)

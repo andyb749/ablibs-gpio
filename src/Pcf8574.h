@@ -49,55 +49,64 @@ class Pcf8574Port : public Port8_t
 {
 	// fields
 	private:
-		uint8_t _addr;
-		TwoWire& _wire;
+		//uint8_t _addr;
+		//TwoWire& _wire;
+		void (*_wrFunc(uint8_t));
+		const uint8_t p;
 
 	public:
 		/// @brief Initialises a new instance of the Pcf8574 class.
 		/// @param addr The I2C address.
 		/// @param wire The I2C bus to use.
-		Pcf8574Port (uint8_t addr, TwoWire& wire) : _addr(addr), _wire(wire)
+		//Pcf8574Port (uint8_t addr, TwoWire& wire) : _addr(addr), _wire(wire)
+		//{
+		//}
+		Pcf8574Port(void (*wrFunc(uint8_t)), uint8_t port) : p(port)
 		{
+			_wrFunc = wrFunc;
 		}
+
+
 
 		/// @brief Sets the direction of the port.
 		/// @param dir A bit mask of the required direction bits.
         /// @details Set each bit to 1 for an input; 0 for an output.
-		inline void setDirection(uint8_t dir)
-		{
-			// PCF8574 does not have any direction register
-		}
+		//inline void setDirection(uint8_t dir)
+		//{
+		//	// PCF8574 does not have any direction register
+		//}
 
 		/// @brief Sets the pullups for the port.
 		/// @param pullups A bit mask of the required pullups.
         /// @details Set each bit to 1 to enable the pullup.  For the
         /// PCF8574 there is no pullup, however by writing to the port
         /// it is possible to simulate the pullup.
-		inline void setPullups(uint8_t pullups)
-		{
-            write(pullups);
-		}
+		//inline void setPullups(uint8_t pullups)
+		//{
+        //    write(pullups);
+		//}
 
 		/// @brief Writes the supplied value to the port.
 		/// @param val The value to write.
-		void write8(uint8_t val)
+		void write(uint8_t val)
 		{
-		    _wire.beginTransmission(_addr);
-		    _wire.write(val);
-		    _wire.endTransmission();
+			_wr->write8(val, p);
+		//    _wire.beginTransmission(_addr);
+		//    _wire.write(val);
+		//    _wire.endTransmission();
 		}
 
 		/// @brief Reads the value of the port.
 		/// @return The value of the port.
-		uint8_t read8() 
-		{ 
-		    _wire.beginTransmission(_addr);
-		    _wire.endTransmission();
-			_wire.requestFrom(_addr, 1);
-			if (_wire.available() == 1)
-				return _wire.read();
-			return 0;
-		}
+		//uint8_t read8() 
+		//{ 
+		//    _wire.beginTransmission(_addr);
+		//    _wire.endTransmission();
+		//	_wire.requestFrom(_addr, 1);
+		//	if (_wire.available() == 1)
+		//		return _wire.read();
+		//	return 0;
+		//}
 };
 #endif
 
@@ -133,7 +142,7 @@ class Pcf8574 : public GpioExpander8_t
 		{
 		    _wire.beginTransmission(_addr);
 		    _wire.endTransmission(false);
-            _wire.requestFrom(_addr, (size_t)1, true);
+            _wire.requestFrom(_addr, (size_t)1, (uint8_t)true);
             return _wire.read() ^ _pol;
 		}
 

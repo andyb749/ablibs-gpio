@@ -60,7 +60,8 @@
 #define MCP23008_GPIO 0x09
 #define MCP23008_OLAT 0x0A
 
-#define MCP23008_ADDR 0x40
+//#define MCP23008_ADDR 0x40
+#define MCP23008_ADDR 0x20
 
 //static const uint32_t spiClk = 1000000; // 1 MHz
 static const uint32_t spiClk = 250000; // 250 kHz
@@ -71,12 +72,10 @@ class Mcp23x08 : public GpioExpander8_t
 {
     // fields
     protected:
-        const uint8_t _wrAddr;
-        const uint8_t _rdAddr;
 
     // methods
     public:
-        Mcp23x08 (uint8_t addr) : _wrAddr(MCP23008_ADDR + (addr<<1)), _rdAddr(MCP23008_ADDR + (addr<<1) + 1)
+        Mcp23x08 () 
         {
         }
 
@@ -147,6 +146,8 @@ class Mcp23S08 : public Mcp23x08
     private:
         SPIClass& _spi;
         const uint8_t _ss;
+        const uint8_t _wrAddr;
+        const uint8_t _rdAddr;
 
     // methods
     public:
@@ -154,7 +155,7 @@ class Mcp23S08 : public Mcp23x08
         /// @param spi A reference to the SPI interface to be used.
 	    /// @param addr An address that specifies the state of the two address pins A1..A0.
         /// @param spi The SPI bus to use.
-        Mcp23S08(uint8_t ss, uint8_t addr = 0, SPIClass &spi = SPI) : _ss(ss), _spi(spi), Mcp23x08(addr)
+        Mcp23S08(uint8_t ss, uint8_t addr = 0, SPIClass &spi = SPI) : _ss(ss), _spi(spi), _wrAddr(MCP23008_ADDR + (addr<<1)), _rdAddr(MCP23008_ADDR + (addr<<1) + 1)
         {
             pinMode(_ss, OUTPUT);
             digitalWrite(_ss, HIGH);
@@ -195,20 +196,21 @@ class Mcp23008 : public Mcp23x08
     // fields
     private:
         TwoWire& _wire;
+        const uint8_t _addr;
 
     // methods
     public:
         /// @brief Initialises a new instance of the MCP23S08 object with the supplied hardware address.
         /// @param wire A reference to the I2C interface to be used.
 	    /// @param addr An address that specifies the state of the two address pins A1..A0.
-        Mcp23008(uint8_t addr = 0, TwoWire &wire = Wire) : _wire(wire), Mcp23x08(addr)
+        Mcp23008(uint8_t addr = 0, TwoWire &wire = Wire) : _addr(addr + MCP23008_ADDR), _wire(wire), Mcp23x08()
         {
         }
 
     private:
         void writeRegister (uint8_t reg, uint8_t val)
         {
-		    _wire.beginTransmission(_wrAddr);
+		    _wire.beginTransmission(_addr);
 		    _wire.write(reg);
 		    _wire.write(val);
 		    _wire.endTransmission();
@@ -216,7 +218,7 @@ class Mcp23008 : public Mcp23x08
         
         uint8_t readRegister (uint8_t reg)
         {
-		    _wire.beginTransmission(_rdAddr);
+		    _wire.beginTransmission(_addr);
 		    _wire.write(reg);
 		    uint8_t ret = _wire.read();
 		    _wire.endTransmission();

@@ -37,6 +37,8 @@
 #ifndef __MCP3208_H__
 #define __MCP3208_H__
 
+#error "This file is no longer part of this library"
+
 /*
  * Objects for interfacing with MCP3204 and MCP3208 12 bit analogue inputs with
  * serial interface (SPI).

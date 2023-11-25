@@ -34,6 +34,7 @@
 //
 //***************************************************************************
 
+#error "This file is no longer part of this library"
 
 #ifndef __ADS1115_H__
 #define __ADS1115_H__

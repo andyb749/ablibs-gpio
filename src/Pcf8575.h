@@ -45,7 +45,7 @@
 /// @brief Definition of an object to represent a PCF8575 16 bit digital
 /// IO expander.
 /// @remark We treat this device as two independent 8-bit ports.
-class Pcf8575 : public GpioExpander8_t
+class Pcf8575 : public GpioExpander16_t
 {
 	// fields
 	private:
@@ -67,7 +67,7 @@ class Pcf8575 : public GpioExpander8_t
 		inline
 		void write16(uint16_t val)
 		{
-			write (_p0 = val & 0xff, val >> 8);
+			write (val & 0xff, val >> 8);
 		}
 
 		/// @brief Writes the 8-bit value to the port.
@@ -88,11 +88,15 @@ class Pcf8575 : public GpioExpander8_t
 
 		uint16_t read16()
 		{
+			Serial.println("read16() start");
 		    _wire.beginTransmission(_addr);
 		    _wire.endTransmission(false);
-            _wire.requestFrom(_addr, (size_t)2, true);
-			uint16_t ret = _wire.read() << 8;
-            return ret + _wire.read();
+            _wire.requestFrom(_addr, (size_t)2, (uint8_t)true);
+			uint8_t b0 = _wire.read();
+			Serial.print("read16() LSB: "); Serial.println(b0);
+            uint8_t b1 = _wire.read();
+			Serial.print("read16() MSB: "); Serial.println(b1);
+			return (b1 << 8) + b0;
 		}
 
 		/// @brief Reads the 8-bit value from the specified port.
@@ -122,7 +126,9 @@ class Pcf8575 : public GpioExpander8_t
 
 		void setPullups(uint8_t pullup, uint8_t p = 0)
 		{
-			// TODO:
+			// The PCF8574 does not have a pullup reg...
+			// But we can simulate
+			write8(pullup, p);
 		}
 	protected:
 	private:
