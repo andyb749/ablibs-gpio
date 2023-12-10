@@ -11,13 +11,14 @@ The following devices are supported:
 * PCF8575 16-bit I2C GPIO expander.
 * MCP23S08 (SPI) 8-bit digital expander.
 * MCP23017 (I2C) 16-bit digital expander.
+* TM1638 IO expander.
+* PCA9685 12-bit, 16 channel PWM.
 
 ## Coming soon
 
 * Support for the PCF8574A 8 bit digital expander.
 * Support for MCP23S17 (SPI) 16-bit digital expander.
 * Support for HM1638 IO expander - maybe?
-* Support for PCA9685 PWM - maybe.
 * Support for MCP3204 and MCP3208 4 and 8 channel 12 bit analogue input expanders.
 * Support ADS1113, ADS1114, ADS1115 2 and 4 channel 16 bit analogue input expanders.
 * Support for AD7780 and AD7795 ADC.
@@ -67,6 +68,23 @@ Currently writes are not working in 16 bit mode.
 
 ## SN74HCT595
 
-TODO:
+The SN74HCT594 is essentially a 8-bit serial to parallel shift register with load.  Connect the pins as
+follows:
 
-## SN74HCT16
+Processor | Pin | Function
+--- + --- + ---
+MOSI | 14 | SER - serial in
+MISO | N/A | Not required
+SCLK | 11 | SHcp clocks the data into the shift register
+SS | 12 | STcp clocks the shift register into the data register
+
+Connect OE to 0V to enable the outputs and MR to VCC via a 1K resistor.
+
+## TM1638 IO Expander
+
+The TM1638 has 10 segments x 8 bits for driving LEDs with 8-level brighness adjustment along with an 8x3 keypad scanning.
+
+## PCA9685 12-bit, 16 channel PWM
+
+The PCA9685 has 16 channels, each with 12-bit PWM and can be written individually or collectively.  In addition
+there is an output enable and six address select bits.

@@ -116,7 +116,7 @@ class Pcf8574 : public GpioExpander8_t
 {
 	// fields
 	private:
-		static const uint8_t _base = 0x20;
+		static const uint8_t _base = 0x40;
 		static const uint8_t _altBase = 0x38;	// check...
 		const uint8_t _addr;
 		uint8_t _pol;
