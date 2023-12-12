@@ -116,7 +116,7 @@ class Pcf8574 : public GpioExpander8_t
 {
 	// fields
 	private:
-		static const uint8_t _base = 0x40;
+		static const uint8_t _base = 0x20;
 		static const uint8_t _altBase = 0x38;	// check...
 		const uint8_t _addr;
 		uint8_t _pol;
@@ -140,9 +140,10 @@ class Pcf8574 : public GpioExpander8_t
 
 		uint8_t read8(uint8_t p = 0)
 		{
-		    _wire.beginTransmission(_addr);
-		    _wire.endTransmission(false);
-            _wire.requestFrom(_addr, (size_t)1, (uint8_t)true);
+		    //_wire.beginTransmission(_addr);
+		    //_wire.endTransmission(false);
+            _wire.requestFrom(_addr, 1);
+			while (0 == _wire.available());
             return _wire.read() ^ _pol;
 		}
 
