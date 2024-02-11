@@ -37,33 +37,70 @@
 #ifndef __HCT595_H__
 #define __HCT595_H__
 
-#include <Arduino.h>
+#include <stdint.h>
 #include <SPI.h>
+#include <commons.h>
+#include "Gpio.h"
+
+#pragma message "HCT595 - software under development"
 
 
-class Hct595 : public GpioExpander8_t
+class Hct595 : public gpioBase_t
 {
     // fields
     private:
         static const uint32_t _spiClk = 1000000;
+        static const uint8_t _portCnt = 1;
+        port8_t _ports[_portCnt];
         const uint8_t _ss;
         SPIClass& _spi;
+        const SPISettings _spiSettings;
+
 
     // methods
     public:
-        Hct595 (uint8_t ss, SPIClass& spi = SPI) : _ss(ss), _spi(spi)
+        Hct595 (uint8_t ss, SPIClass& spi = SPI) : _ss(ss), _spi(spi), _spiSettings(_spiClk, MSBFIRST, SPI_MODE3), _ports{{0,this}}
         {
             pinMode(ss, OUTPUT);
             digitalWrite(ss, HIGH);
         }
 
-        void write8(uint8_t val, uint8_t = 0)
+        /*
+         * Implementation of the base class methods
+         */
+
+		/// @brief Gets the count of 8-bit ports.
+		/// @return The number of ports.
+		inline
+        uint8_t getPortCount()
+		{
+			return _portCnt;
+		}
+
+        /// @brief Gets the specified 8-bit port.
+        /// @param p The port number (0-1).
+        /// @return The port.
+        //pcf8575Port_t& 
+        port8_t& getPort(uint8_t p=0)
+		{
+			if (p >= _portCnt)
+			{
+				Serial.print("Invalid port passed: ");
+				Serial.println(p);
+				p = 0;
+			}
+
+			return _ports[p];
+		}
+
+        inline
+        void setDirection8(uint8_t dir, uint8_t p = 0)
         {
-            SPI.beginTransaction(SPISettings(_spiClk, MSBFIRST, SPI_MODE3));
-            digitalWrite(_ss, LOW); //pull SS low to prep other end for transfer
-            SPI.transfer(val);
-            digitalWrite(_ss, HIGH); //pull ss high to signify end of data transfer
-            SPI.endTransaction();
+        }
+
+        inline
+        void setPullups8(uint8_t pullup, uint8_t p = 0)
+        {
         }
 
         inline
@@ -72,20 +109,15 @@ class Hct595 : public GpioExpander8_t
             return 0;
         }
 
-        inline
-        void setDirection(uint8_t dir, uint8_t p = 0)
+        void write8(uint8_t val, uint8_t = 0)
         {
+            SPI.beginTransaction(_spiSettings);
+            digitalWrite(_ss, LOW); //pull SS low to prep other end for transfer
+            SPI.transfer(val);
+            digitalWrite(_ss, HIGH); //pull ss high to signify end of data transfer
+            SPI.endTransaction();
         }
 
-        inline
-        void setPolarity(uint8_t pol, uint8_t p = 0)
-        {
-        }
-
-        inline
-        void setPullups(uint8_t pullup, uint8_t p = 0)
-        {
-        }
 
     private:
         Hct595( const Hct595 &c );

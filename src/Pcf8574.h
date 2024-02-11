@@ -8,7 +8,7 @@
 //
 // The MIT License (MIT)
 //
-// Copyright (c) 2015-2023 Andy Burgess
+// Copyright (c) 2015-2024 Andy Burgess
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,84 +40,20 @@
 
 #include <Wire.h>
 #include <stdint.h>
+#include <commons.h>
 #include "Gpio.h"
 
 
-#if false
-/// @brief A class to represent an 8 bit port.
-class Pcf8574Port : public Port8_t
-{
-	// fields
-	private:
-		//uint8_t _addr;
-		//TwoWire& _wire;
-		void (*_wrFunc(uint8_t));
-		const uint8_t p;
-
-	public:
-		/// @brief Initialises a new instance of the Pcf8574 class.
-		/// @param addr The I2C address.
-		/// @param wire The I2C bus to use.
-		//Pcf8574Port (uint8_t addr, TwoWire& wire) : _addr(addr), _wire(wire)
-		//{
-		//}
-		Pcf8574Port(void (*wrFunc(uint8_t)), uint8_t port) : p(port)
-		{
-			_wrFunc = wrFunc;
-		}
-
-
-
-		/// @brief Sets the direction of the port.
-		/// @param dir A bit mask of the required direction bits.
-        /// @details Set each bit to 1 for an input; 0 for an output.
-		//inline void setDirection(uint8_t dir)
-		//{
-		//	// PCF8574 does not have any direction register
-		//}
-
-		/// @brief Sets the pullups for the port.
-		/// @param pullups A bit mask of the required pullups.
-        /// @details Set each bit to 1 to enable the pullup.  For the
-        /// PCF8574 there is no pullup, however by writing to the port
-        /// it is possible to simulate the pullup.
-		//inline void setPullups(uint8_t pullups)
-		//{
-        //    write(pullups);
-		//}
-
-		/// @brief Writes the supplied value to the port.
-		/// @param val The value to write.
-		void write(uint8_t val)
-		{
-			_wr->write8(val, p);
-		//    _wire.beginTransmission(_addr);
-		//    _wire.write(val);
-		//    _wire.endTransmission();
-		}
-
-		/// @brief Reads the value of the port.
-		/// @return The value of the port.
-		//uint8_t read8() 
-		//{ 
-		//    _wire.beginTransmission(_addr);
-		//    _wire.endTransmission();
-		//	_wire.requestFrom(_addr, 1);
-		//	if (_wire.available() == 1)
-		//		return _wire.read();
-		//	return 0;
-		//}
-};
-#endif
-
 /// @brief Implmentation of an object to interface with a PCF8574 8 bit digital
 /// port expander.  Note: the PCF8574A has a different base address.
-class Pcf8574 : public GpioExpander8_t
+class Pcf8574 : public gpioBase_t
 {
 	// fields
 	private:
 		static const uint8_t _base = 0x20;
 		static const uint8_t _altBase = 0x38;	// check...
+        static const uint8_t _portCnt = 1;
+        port8_t _ports[_portCnt];
 		const uint8_t _addr;
 		uint8_t _pol;
 		TwoWire& _wire;
@@ -127,46 +63,73 @@ class Pcf8574 : public GpioExpander8_t
 		/// @brief Initialises a new instance of the Pcf8574 object for the specified I2C address and interface.
 		/// @param addr The I2C address.
 		/// @param wire The I2C interface.
-		Pcf8574 (uint8_t addr=0x00, TwoWire& wire = Wire) : _addr(_base+addr), _wire(wire)
+		Pcf8574 (uint8_t addr=0x00, TwoWire& wire = Wire) : _addr(_base+addr), _wire(wire), _ports{{0,this}}
 		{
 		}
 
-		void write8(uint8_t val, uint8_t p = 0)
+        /*
+         * Implementation of the base class methods
+         */
+
+		/// @brief Gets the count of 8-bit ports.
+		/// @return The number of ports.
+		inline
+		uint8_t getPortCount()
+		{
+			return _portCnt;
+		}
+
+        /// @brief Gets the specified 8-bit port.
+        /// @param p The port number (0-1).
+        /// @return The port.
+        //pcf8575Port_t& 
+        port8_t& getPort(uint8_t p=0)
+		{
+			if (p >= _portCnt)
+			{
+				Serial.print("Invalid port passed: ");
+				Serial.println(p);
+				p = 0;
+			}
+
+			return _ports[p];
+		}
+
+		inline
+		void setDirection8(uint8_t dir, uint8_t p = 0)
+		{
+			// The PCF8574 does not have a direction reg.
+		}
+
+		inline 
+		void setPullups8(uint8_t pullup, uint8_t p=0)
+		{
+			// The PCF8574 does not have a pullup reg...
+			// But we can simulate
+			write8(pullup, p);
+		}
+
+		/// @brief Reads the 8-bit value from the specified port.
+		/// @param p The port to read from.
+		/// @return The value read from the port.
+		uint8_t read8(uint8_t p=0)
+		{
+            _wire.requestFrom(_addr, 1);
+			while (0 == _wire.available());
+            return _wire.read() ^ _pol;
+		}
+
+		/// @brief Writes the supplied 8-bit value to the specified port.
+		/// @param val The value to write.
+		/// @param p The port to write to.
+		void write8(uint8_t val, uint8_t p=0)
 		{
 		    _wire.beginTransmission(_addr);
 		    _wire.write(val);
 		    _wire.endTransmission();
 		}
 
-		uint8_t read8(uint8_t p = 0)
-		{
-		    //_wire.beginTransmission(_addr);
-		    //_wire.endTransmission(false);
-            _wire.requestFrom(_addr, 1);
-			while (0 == _wire.available());
-            return _wire.read() ^ _pol;
-		}
 
-		inline
-		void setDirection(uint8_t dir, uint8_t p = 0)
-		{
-			// The PCF8574 does not have a direction reg.
-		}
-
-		inline
-		void setPolarity(uint8_t pol, uint8_t p = 0)
-		{
-			// The PCF85874 does not have a polarity reg.
-			_pol = pol;
-		}
-
-		inline 
-		void setPullups(uint8_t pullup, uint8_t p = 0)
-		{
-			// The PCF8574 does not have a pullup reg...
-			// But we can simulate
-			write8(pullup);
-		}
 	protected:
 	private:
 		Pcf8574( const Pcf8574 &c );

@@ -8,7 +8,7 @@
 //
 // The MIT License (MIT)
 //
-// Copyright (c) 2015-2023 Andy Burgess
+// Copyright (c) 2015-2024 Andy Burgess
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,10 +37,12 @@
 #ifndef __MCP23X17_H__
 #define __MCP23X17_H__
 
-#include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
+#include <Commons.h>
 #include "Gpio.h"
+
+#pragma message "MCP23x17 - software under development"
 
 // registers
 #define MCP23017_16BIT_MODE
@@ -101,25 +103,84 @@
 //static const uint32_t spiClk = 1000000; // 1 MHz
 static const uint32_t spiClk = 250000; // 250 kHz
 
-class Mcp23x17 : public GpioExpander16_t
+class Mcp23x17 : public gpioBase_t
 {
     // fields
+    private:
+        static const uint8_t _portCnt = 2;
+        port8_t _ports[_portCnt];
+
     protected:
         const uint8_t _wrAddr;
         const uint8_t _rdAddr;
 
     // methods
     public:
-        Mcp23x17 (uint8_t addr) : _wrAddr(MCP23017_ADDR + (addr<<1)), _rdAddr(MCP23017_ADDR + (addr<<1) + 1)
+        Mcp23x17 (uint8_t addr) : _wrAddr(MCP23017_ADDR + (addr<<1)), _rdAddr(MCP23017_ADDR + (addr<<1) + 1), _ports{{0,this},{1,this}}
         {
         }
 
-        void write16(uint16_t val)
+        /*
+         * Implementation of the base class methods
+         */
+
+		/// @brief Gets the count of 8-bit ports.
+		/// @return The number of ports.
+		inline
+        uint8_t getPortCount()
+		{
+			return _portCnt;
+		}
+
+        /// @brief Gets the specified 8-bit port.
+        /// @param p The port number (0-1).
+        /// @return The port.
+        //pcf8575Port_t& 
+        port8_t& getPort(uint8_t p=0)
+		{
+			if (p >= _portCnt)
+			{
+				Serial.print("Invalid port passed: ");
+				Serial.println(p);
+				p = 0;
+			}
+
+			return _ports[p];
+		}
+
+        inline
+        void setDirection8(uint8_t dir, uint8_t p = 0)
         {
-            write8(val && 0xff, 0);
-            write8(val >> 8, 1);
+            switch (p)
+            {
+                case 0:
+                    writeRegister(MCP23017_IODIRA, dir);
+                    break;
+                case 1:
+                    writeRegister(MCP23017_IODIRB, dir);
+                    break;
+            }
         }
 
+
+
+        inline
+        void setPullups8(uint8_t pullup, uint8_t p = 0)
+        {
+            switch (p)
+            {
+                case 0:
+                    writeRegister(MCP23017_GPPUA, pullup);
+                    break;
+
+                case 1:
+                    writeRegister(MCP23017_GPPUB, pullup);
+                    break;
+            }
+        }
+
+
+        inline
         void write8(uint8_t val, uint8_t p = 0)
         {
             switch (p)
@@ -133,13 +194,8 @@ class Mcp23x17 : public GpioExpander16_t
             }
         }
 
-        uint16_t read16()
-        {
-            uint16_t ret = read8(1) << 8;
-            ret += read8(0);
-            return ret;
-        }
 
+        inline
         uint8_t read8(uint8_t p = 0)
         {
             switch (p)
@@ -152,28 +208,20 @@ class Mcp23x17 : public GpioExpander16_t
             return 0x00;
         }
 
-        void setDirection(uint8_t dir, uint8_t p = 0)
+#if false
+        void write16(uint16_t val)
         {
-            switch (p)
-            {
-                case 0:
-                    writeRegister(MCP23017_IODIRA, dir);
-                    break;
-                case 1:
-                    writeRegister(MCP23017_IODIRB, dir);
-                    break;
-            }
+            write8(val && 0xff, 0);
+            write8(val >> 8, 1);
         }
 
-        void setPullups(uint8_t pullup, uint8_t p = 0)
+        uint16_t read16()
         {
-            // TODO:
+            uint16_t ret = read8(1) << 8;
+            ret += read8(0);
+            return ret;
         }
-
-        void setPolarity(uint8_t polarity, uint8_t p = 0)
-        {
-            // TODO:
-        }
+#endif
 
     private:
         virtual void writeRegister(uint8_t reg, uint8_t val) = 0;
@@ -205,6 +253,7 @@ class Mcp23S17 : public Mcp23x17
         uint8_t readRegister(uint8_t reg)
         {
             // TODO:
+            return 0;
         }
 
         Mcp23S17( const Mcp23S17 &c );
@@ -230,7 +279,7 @@ class Mcp23017 : public Mcp23x17
     private:
         void writeRegister(uint8_t reg, uint8_t val)
         {
-            #ifdef DEBUG
+            #ifdef DEBUG_MCP23017
             Serial.print("WR (");
             Serial.print(_addr, HEX);
             Serial.print(") ");

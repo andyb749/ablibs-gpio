@@ -8,7 +8,7 @@
 //
 // The MIT License (MIT)
 //
-// Copyright (c) 2015-2023 Andy Burgess
+// Copyright (c) 2015-2024 Andy Burgess
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,18 +37,12 @@
 #ifndef __MCP23X08_H__
 #define __MCP23X08_H__
 
-/*
- * Objects for interfacing with MCP23008 ad MCP23S08 8 bit I/O expanders with
- * serial interface (I2C/SPI).
- */
-
-#include <Arduino.h>
 #include <SPI.h>
 #include <Wire.h>
-#include "Commons.h"
+#include <Commons.h>
 #include "Gpio.h"
 
-//#define DEBUG
+#pragma message "MCP23x08 - software under development"
 
 // registers
 #define MCP23008_IODIR 0x00
@@ -66,71 +60,74 @@
 #define MCP23008_SPI_ADDR 0x40
 #define MCP23008_ADDR 0x20
 
-static const uint32_t spiClk = 1000000; // 1 MHz
-//static const uint32_t spiClk = 250000; // 250 kHz
 
 /// @brief Base class for the MCP23008 & MCP23S08 8-bit
 /// IO expanders.
-class Mcp23x08 : public GpioExpander8_t
+class Mcp23x08 : public gpioBase_t
 {
     // fields
-    protected:
+    private:
+        static const uint8_t _portCnt = 1;
+        port8_t _ports[_portCnt];
 
     // methods
     public:
-        Mcp23x08 () 
+        Mcp23x08 () : _ports{{0,this}}
         {
         }
 
-        //! \brief Writes the supplied value to the GPIO pins
-        //! \details Writes to the GPIO register to set the pins
-        //! to the supplied value
-        //! \param val The value to write to the output pins
+        /*
+         * Implementation of the base class methods
+         */
+
+		/// @brief Gets the count of 8-bit ports.
+		/// @return The number of ports.
+		inline
+        uint8_t getPortCount()
+		{
+			return _portCnt;
+		}
+
+        /// @brief Gets the specified 8-bit port.
+        /// @param p The port number (0-1).
+        /// @return The port.
+        //pcf8575Port_t& 
+        port8_t& getPort(uint8_t p=0)
+		{
+			if (p >= _portCnt)
+			{
+				Serial.print("Invalid port passed: ");
+				Serial.println(p);
+				p = 0;
+			}
+
+			return _ports[p];
+		}
+
+        inline
+        void setDirection8(uint8_t dir, uint8_t p = 0)
+        {
+            writeRegister(MCP23008_IODIR, dir);
+        }
+
+
+        inline
+        void setPullups8(uint8_t pullup, uint8_t p = 0)
+        {
+            writeRegister(MCP23008_GPPU, pullup);
+        }
+
+
         inline
         void write8(uint8_t val, uint8_t p = 0)
         {
             writeRegister(MCP23008_GPIO, val);
         }
 
-        //! \brief Reads the value of the GPIO pins
-        //! \details Reads the GPIO register to get the value on the input pins
-        //! \returns The value of the GPIO register
         inline
         uint8_t read8(uint8_t p = 0)
         {
             return readRegister(MCP23008_GPIO);
-        }
-
-        //! \brief Sets the direction of each IO pin
-        //! \details Writes to the IODIR register to set the
-        //! direction of each pin. Set a bit to 1 to enable the pin as
-        //! an input
-        //! \param dir The bits pattern to set direction
-        inline
-        void setDirection(uint8_t dir, uint8_t p = 0)
-        {
-            writeRegister(MCP23008_IODIR, dir);
-        }
-
-        //! \brief Sets the polarity of each IO pin
-        //! \details Writes to the IPOL register to invert the
-        //! polarity of the input when read. Set a bit to 1 to enable the
-        //! pin inversion
-        //! \param pol The bit pattern to set inversion	
-        inline
-        void setPolarity(uint8_t pol, uint8_t p = 0)
-        {
-            writeRegister(MCP23008_IPOL, pol);
-        }
-
-        //! \brief Sets the pullups of each IO pin
-        //! \details Writes to the GPPU register to enable the weak
-        //! pullup of 100K.  Set a bit to 1 to enable the pullup	
-        //! \param pullup The bit pattern to set pullups
-        inline
-        void setPullups (uint8_t pullup,  uint8_t p = 0)
-        {
-            writeRegister(MCP23008_GPPU, pullup);
         }
 
 private:
@@ -147,8 +144,10 @@ class Mcp23S08 : public Mcp23x08
     public:
     protected:
     private:
+        static const uint32_t _spiClk = 1000000;
         SPIClass& _spi;
         const uint8_t _ss;
+        const SPISettings _spiSettings;
         const uint8_t _wrAddr;
         const uint8_t _rdAddr;
 
@@ -158,7 +157,8 @@ class Mcp23S08 : public Mcp23x08
         /// @param spi A reference to the SPI interface to be used.
 	    /// @param addr An address that specifies the state of the two address pins A1..A0.
         /// @param spi The SPI bus to use.
-        Mcp23S08(uint8_t ss, uint8_t addr = 0, SPIClass &spi = SPI) : _ss(ss), _spi(spi), _wrAddr(MCP23008_SPI_ADDR + (addr<<1)), _rdAddr(MCP23008_SPI_ADDR + (addr<<1) + 1)
+        Mcp23S08(uint8_t ss, uint8_t addr = 0, SPIClass &spi = SPI) : _ss(ss), _spi(spi), _wrAddr(MCP23008_SPI_ADDR + (addr<<1)), _rdAddr(MCP23008_SPI_ADDR + (addr<<1) + 1), 
+        _spiSettings(_spiClk, MSBFIRST, SPI_MODE0) 
         {
             pinMode(_ss, OUTPUT);
             digitalWrite(_ss, HIGH);
@@ -168,10 +168,10 @@ class Mcp23S08 : public Mcp23x08
     private:
         void writeRegister (uint8_t reg, uint8_t val)
         {
-            #ifdef DEBUG
-            strprintf(Serial, "writeRegister(%02X: %d, %02X)\n", _wrAddr, reg, val);
+            #ifdef DEBUG_MCP23008
+                strprintf(Serial, "writeRegister(%02X: %d, %02X)\n", _wrAddr, reg, val);
             #endif
-          	_spi.beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE0));
+          	_spi.beginTransaction(_spiSettings);
             digitalWrite(_ss, LOW);
             _spi.transfer(_wrAddr);
             _spi.transfer(reg);
@@ -182,10 +182,10 @@ class Mcp23S08 : public Mcp23x08
         
         uint8_t readRegister (uint8_t reg)
         {
-            #ifdef DEBUG
-            strprintf(Serial, "readRegister(%02X: %d)\n", _rdAddr, reg);
+            #ifdef DEBUG_MCP23008
+                strprintf(Serial, "readRegister(%02X: %d)\n", _rdAddr, reg);
             #endif
-          	_spi.beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE0));
+          	_spi.beginTransaction(_spiSettings);
             digitalWrite(_ss, LOW);
             _spi.transfer(_rdAddr);
             _spi.transfer(reg);
